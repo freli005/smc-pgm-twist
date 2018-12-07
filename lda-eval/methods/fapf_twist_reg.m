@@ -1,7 +1,13 @@
 function lZ = fapf_twist_reg(w, phi, m, ep_posterior, reg, Np)
+% This is an crude implementation of the regularization idea presented in the
+% supplementary material. This was never used for the paper, however, and
+% the code is not properly tested!
+%
 % words,        w:   1 x n
 % topics,       phi: T x V
 % topic_prior,  m:   T x 1
+
+warning('This code is not properly tested!');
 
 % Topic prior
 %alpha = sum(m);

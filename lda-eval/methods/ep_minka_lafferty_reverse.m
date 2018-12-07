@@ -1,4 +1,4 @@
-function [lZ,beta] = ep_minka(doc, phi, m, maxIter)
+function [lZ,beta] = ep_minka_lafferty_reverse(doc, phi, m, maxIter)
 % document,     doc:   1 x n
 % topics,       phi: K x V
 % topic_prior,  m:   K x 1
@@ -15,10 +15,16 @@ tolerance = 1e-5;
 
 % Start by reducing the vocabulary based on the current document
 n = length(doc); % Number of words
-[w_unique,~,doc] = unique(doc,'sorted');
+[w_unique,ordr,doc] = unique(doc,'last');
+if(~issorted(w_unique)), error('Arrgh!'); end; % Saftey check.. not sure about the legacy version of unique
 phi = phi(:,w_unique);
 [K,V] = size(phi);
 nw = histc(doc,1:V)'; % Number of occurences of each word
+
+% Find order to traverse vocabulary. ordr is a list of length V, giving the
+% last occurance of each word in the document. I.e. word w last occurs at
+% position ordr(w) in the document
+[~,ordr] = sort(ordr,'descend'); % This gives the order of words, from last to first
 
 % Initialize the EP parameters (below Eq (16) of minka-aspect)
 beta = zeros(K,V);
@@ -31,7 +37,7 @@ numIter = 0;
 beta_old = beta;
 
 while(~converged)
-    for(w = 1:V)
+    for(w = ordr')
         %%% Deletion
         gm = g - beta(:,w);
         
@@ -45,10 +51,15 @@ while(~converged)
             gp = sum(mu-mu2)/sum(mu2-mu.^2)*mu;
             
             %%% Update
-            if(all(gp >= 0))
+            betap = 1/nw(w)*(gp-gm) + (1-1/nw(w))*beta(:,w);
+            beta_tmp = beta;
+            beta_tmp(:,w) = betap;
+            validityCheck = all(all( bsxfun(@plus, m, cumsum(beta_tmp(:,doc),2,'reverse')) >=0)) && all(gp >=0);            
+            
+            if(validityCheck)
                 g = gp; % Current posterior approximation
                 %beta(:,w) = gp-gm;
-                beta(:,w) = 1/nw(w)*(gp-gm) + (1-1/nw(w))*beta(:,w);
+                beta(:,w) = betap;
                 logs(w) = log(Zj) + gammaln(sum(gp))-gammaln(sum(gm)) + sum(gammaln(gm)-gammaln(gp));
             end
         end

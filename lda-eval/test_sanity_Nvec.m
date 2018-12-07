@@ -1,92 +1,86 @@
+% Test inference methods on a very small model where we can compute the
+% exact likelihood using brute force.
+
+clear
 addpath('./helpers');
 addpath('./methods');
 
-
-%% Generate or load data
-file = 'sanity2';
+%% Generate (or load) data
+file = 'sanity';
 load(file);
 % 
-% T = 4;
-% V = 9294;
-% n = 10;
-% topics = rand(T, V);
+% K = 4; % Number of topics
+% V = 9294; % Size of vocabulary (each word is represented by an integer in 1:V)
+% n = 10; % Number of words in document 
+% 
+% % Word distributions (corresponds to \Phi^T in the paper)
+% topics = rand(K, V); 
 % topics = bsxfun(@rdivide, topics, sum(topics, 2));
-% topic_prior = rand(T, 1);
-% topic_prior = 2 * topic_prior / sum(topic_prior);
+% 
+% % Topic distribution prior: concentration parameters of Dirichlet
+% % distribution from which document topics are drawn (corresponds to \alpha
+% % in the paper)
+% topic_prior = rand(K, 1); 
+% topic_prior = 1 * topic_prior / sum(topic_prior);
+% 
+% % Random words in document
 % words = ceil(rand(1, n) * V);
 
+
+%% Compute exact likelihood (code by Murray, 2009)
 exact = ldae_dumb_exact(words,topics,topic_prior);
 
+%% Run EP baseline (Minka & Laffery, 2002) 
 tic;
-[lZep2,beta2] = ep2(words, topics, topic_prior,5000);  % One factor per word in vocab
-toc;
-tic;
-%[lZep3,g3] = ep2_sequential(words, topics, topic_prior); % One factor per word in doc
-[lZep3,beta3] = ep_minka3(words, topics, topic_prior,5000); % One factor per word in doc
-g3 = bsxfun(@plus, topic_prior, cumsum(beta3,2,'reverse'));
+[lZep1,beta1] = ep_minka_lafferty(words, topics, topic_prior,5000);  % One factor per word in vocab
+g1 = bsxfun(@plus, topic_prior, cumsum(beta1,2,'reverse'));
 toc;
 
-abs(lZep2-exact)/abs(lZep3-exact)
+tic;
+[lZep2,beta2] = ep_minka_lafferty_reverse(words, topics, topic_prior,5000); % One factor per word in doc
+g2 = bsxfun(@plus, topic_prior, cumsum(beta2,2,'reverse'));
+toc;
 
-% [lZep,beta] = ep2(words, topics, topic_prior); % One factor per word in doc
+abs(lZep1-exact)/abs(lZep2-exact)
 
-%% Test methods
+%% Test SMC methods
 indepIter = 100; % Run each method #indepIter times 
+
+% Varying number of particles (from 1 to 1000)
 numN = 200;
-%nrParticles = 25; % Multiplied by length(words) for the SMC sampler
 Nvec = unique( round(logspace(0,3,numN)));
 numN = length(Nvec);
 
-lZsmc = zeros(numN,indepIter);
-lZtwist = zeros(numN,indepIter);
-lZtwist2 = zeros(numN,indepIter);
+lZsmc = zeros(numN,indepIter); % SMC-Base
+lZtwist = zeros(numN,indepIter); % SMC-Twist
 
 for iIter = 1:indepIter
     for nIter = 1:length(Nvec)
         nrParticles = Nvec(nIter);
         
-        % SMC
+        % SMC-Base
         tic;
         lZsmc(nIter,iIter) = fapf(words,topics,topic_prior,nrParticles);
         toc;
         
+        % SMC-Twist
         tic;
-        lZtwist(nIter,iIter) = fapf_twist(words,topics,topic_prior,g3,nrParticles);
+        lZtwist(nIter,iIter) = fapf_twist(words,topics,topic_prior,g2,nrParticles);
         toc;
-        
-%         tic;
-%         lZtwist2(nIter,iIter) = fapf_twist_reg(words,topics,topic_prior,g3,0.05,nrParticles);
-%         toc;
-        
-        % LRS
-        %tic;
-        %lZlrs(iIter) = lrs2(words,topics,topic_prior,nrParticles);
-        %toc;
     end
 end
 
 %% Plot
-%plot([1 indepIter],exact*[1,1],'k--'); hold on;
-%plot([1 indepIter],lZep*[1,1],'r--');
-figure;
-h = [];
-plot(Nvec([1,end]),exact*[1,1],'k--'); hold on;
-plot(Nvec([1,end]),lZep3*[1,1],'r--');
 
-plot(Nvec,lZsmc,'b-');
-plot(Nvec,lZtwist,'g-');
-%plot(Nvec,lZtwist2,'r-');
-legend(h,'Exact','EP','SMC','Twist','Twist+reg');
-
-
-%%
 mse_base = mean( (lZsmc - exact).^2, 2);
 mse_twist = mean( (lZtwist - exact).^2, 2);
 se_ep = (lZep2-exact)^2;
 
-8
-print(1,'-dpdf','lda-sanity')
+figure(1)
+loglog(Nvec([1 end]), se_ep*[1 1],'k:'); hold on;
+loglog(Nvec, mse_base,'r');
+loglog(Nvec, mse_twist,'b');
+legend('EP baseline','SMC-Base','SMC-Twist');
 
 %% save
-save ./results/sanity-epm3.mat
-save ./results/lda-sanity.mat mse_base mse_twist se_ep Nvec
+%save ./results/sanity-results.mat
