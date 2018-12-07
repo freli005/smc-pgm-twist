@@ -12,16 +12,13 @@ load(file);
 
 lZsmc = zeros(numN,numDocs,indepIter);
 lZtwist = zeros(numN,numDocs,indepIter);
-lZtwist2 = zeros(numN,numDocs,indepIter);
 lZep = zeros(numDocs,1);
 
 for iDoc = 1:numDocs
     iDoc
     tic;
-    %[lZep(iDoc),ep_posterior] = ep2_sequential(docs{iDoc}, topics, topic_prior); % One factor per word in doc
-    [lZep(iDoc),beta] = ep_minka3(docs{iDoc}, topics, topic_prior,5000); % One factor per word in doc
+    [lZep(iDoc),beta] = ep_minka_lafferty_reverse(docs{iDoc}, topics, topic_prior,5000); % One factor per word in doc
     ep_posterior = bsxfun(@plus, topic_prior, cumsum(beta,2,'reverse'));
-    toc;
     toc;
 
     for(iN = 1:numN)
@@ -34,19 +31,16 @@ for iDoc = 1:numDocs
             tic;
             lZtwist(iN,iDoc,iIter) = fapf_twist(docs{iDoc},topics,topic_prior,ep_posterior,nrParticles);
             toc;
-
-            %tic;
-            %lZtwist2(iN,iDoc,iIter) = fapf_twist_reg(docs{iDoc},topics,topic_prior,ep_posterior,0.05,nrParticles);
-            %toc;
         end
     end
 end
 
 %% Plot
-% reestimate likelihood with "pure" EP
+% reestimate likelihood with the non-modified version of EP (i.e. the
+% version originally proposed by Minka & Lafferty, 2002) 
 lZep0 = zeros(numDocs,1);
 for iDoc=1:numDocs
-    lZep0(iDoc) = ep_minka(docs{iDoc}, topics, topic_prior,5000); % One factor per word in doc
+    lZep0(iDoc) = ep_minka_laffarty(docs{iDoc}, topics, topic_prior,5000);
 end
 
 %%
