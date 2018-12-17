@@ -11,7 +11,7 @@ load(file);
 % 
 % K = 4; % Number of topics
 % V = 9294; % Size of vocabulary (each word is represented by an integer in 1:V)
-% n = 10; % Number of words in document 
+% T = 10; % Number of words in document 
 % 
 % % Word distributions (corresponds to \Phi^T in the paper)
 % topics = rand(K, V); 
@@ -24,7 +24,7 @@ load(file);
 % topic_prior = 1 * topic_prior / sum(topic_prior);
 % 
 % % Random words in document
-% words = ceil(rand(1, n) * V);
+% words = ceil(rand(1, T) * V);
 
 
 %% Compute exact likelihood (code by Murray, 2009)

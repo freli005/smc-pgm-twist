@@ -2,9 +2,14 @@ function [lZ,beta] = ep_minka_lafferty_reverse(doc, phi, m, maxIter)
 % document,     doc:   1 x n
 % topics,       phi: K x V
 % topic_prior,  m:   K x 1
-
+%
 % This EP implementation uses one factor per word in the document, but
 % shared for same words
+%
+% Modification of method by Minka & Lafferty to ensure that all
+% intermediate twisting functions are non-negative (see line 60). Also,
+% traverses document in reverse order, which seems to (?!) result in fewer
+% violations of this condition
 
 debugging = false;
 
@@ -89,10 +94,5 @@ lZ = sum(nw.*logs) + gammaln(sum(m))-gammaln(sum(g)) + sum(gammaln(g)-gammaln(m)
 % Return beta on the same format as other methods, where we have one factor
 % per word in document
 beta = beta(:,doc);
-
-
-
-%%% DEBUG
-%g - (m+sum(bsxfun(@times, nw, beta),2))
 
 

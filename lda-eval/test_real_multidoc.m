@@ -1,3 +1,5 @@
+% Test inference methods on real data (multiple documents)
+
 %clear;file='newsgroups';test_real_multidoc;save ./results/newsgroup-epm3;clear;file='medline';test_real_multidoc;save ./results/medline-epm3;
 
 addpath('./helpers');
